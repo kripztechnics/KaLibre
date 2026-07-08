@@ -40,9 +40,13 @@ Dans un CMD (clique droit sur le bureau "Ouvrir dans le terminal")  tape les com
 
 git clone https://github.com/kripztechnics/Kalibre.git
 cd Kalibre
+
 python -m venv .venv
+
 .\.venv\Scripts\activate
+
 python -m pip install --upgrade pip
+
 pip install -r requirements.txt
 
 ~~ Pour lancer l'appli une fois toutes les dépendances installées : 
