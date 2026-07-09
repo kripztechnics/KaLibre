@@ -34,7 +34,13 @@ Fichiers importants
 
 COMMENT L'INSTALLER ??? tu vas me dire 
 
-Installe les dépendances listées :
+Tu as 2 solutions :
+
+- Tu peux telecharger le .zip et ouvrir le .exe 
+  dans le dossier /klibre/dist/Kalibre.exe
+  il y a une petite installations pour les dépendances 
+
+- Sinon à l'ancienne ca marche aussi :
 
 AVANT TOUT IL TE FAUT UNE VERSION DE GIT pour pouvoir télécharger le repos :
 
