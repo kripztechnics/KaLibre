@@ -58,9 +58,9 @@ class MplPanel(FigureCanvasQTAgg):
     """Canvas matplotlib — fond sombre, marges stables."""
 
     def __init__(self, min_height: int = 220) -> None:
-        self.figure = Figure(facecolor=AXES_FACE, figsize=(6.5, 3.4), dpi=96)
+        self.figure = Figure(facecolor=AXES_FACE, figsize=(8.0, 4.4), dpi=96)
         super().__init__(self.figure)
-        self.setMinimumHeight(min_height)
+        self.setMinimumHeight(max(min_height, 280))
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -81,7 +81,7 @@ class MplPanel(FigureCanvasQTAgg):
             axis.grid(True, color=BORDER, alpha=0.45, linewidth=0.7)
 
     def _fit_layout(self) -> None:
-        self.figure.subplots_adjust(left=0.13, right=0.88, top=0.96, bottom=0.17)
+        self.figure.subplots_adjust(left=0.12, right=0.92, top=0.94, bottom=0.16)
 
     def clear_axes(self) -> None:
         self.axes.clear()
@@ -90,6 +90,10 @@ class MplPanel(FigureCanvasQTAgg):
     def draw(self) -> None:
         self._fit_layout()
         super().draw()
+
+    def draw_idle(self) -> None:
+        self._fit_layout()
+        super().draw_idle()
 
 
 class PlotCard(QWidget):
@@ -174,6 +178,7 @@ class PlotCard(QWidget):
             self.axes.set_ylabel(ylabel, labelpad=6)
 
         self.toolbar = CompactNavigationToolbar(self.panel, self)
+        self.panel.mpl_connect("draw_event", self._on_draw)
         self.toolbar.setStyleSheet(TOOLBAR_STYLE)
 
         # Small controls: zoom in/out and lock axes
@@ -226,11 +231,15 @@ class PlotCard(QWidget):
         if getattr(self, "_suppress_callbacks", False):
             return
         try:
-            lo, hi = ax.get_xlim()
-            # store as floats; mark auto_x False to preserve manual limits
+            x_lo, x_hi = ax.get_xlim()
             self.settings.config.auto_x = False
-            self.settings.config.x_min = float(lo)
-            self.settings.config.x_max = float(hi)
+            self.settings.config.x_min = float(x_lo)
+            self.settings.config.x_max = float(x_hi)
+            try:
+                self.settings.spin_x_min.setValue(float(x_lo))
+                self.settings.spin_x_max.setValue(float(x_hi))
+            except Exception:
+                pass
             self.settings.changed.emit()
         except Exception:
             pass
@@ -239,14 +248,29 @@ class PlotCard(QWidget):
         if getattr(self, "_suppress_callbacks", False):
             return
         try:
-            lo, hi = ax.get_ylim()
+            y_lo, y_hi = ax.get_ylim()
             self.settings.config.auto_y = False
-            self.settings.config.y_min = float(lo)
-            self.settings.config.y_max = float(hi)
+            self.settings.config.y_min = float(y_lo)
+            self.settings.config.y_max = float(y_hi)
+            try:
+                self.settings.spin_y_min.setValue(float(y_lo))
+                self.settings.spin_y_max.setValue(float(y_hi))
+            except Exception:
+                pass
             self.settings.changed.emit()
         except Exception:
             pass
-        outer.addWidget(self.frame)
+
+    def _on_draw(self, event) -> None:
+        if getattr(self, "_suppress_callbacks", False):
+            return
+        try:
+            current_scale = self.axes.get_xscale()
+            if current_scale != self.settings.config.x_scale:
+                self.settings.config.x_scale = current_scale
+                self.settings.changed.emit()
+        except Exception:
+            pass
 
     def set_series_row(self, layout: QHBoxLayout) -> None:
         """Ligne de cases à cocher (courbes visibles) — au-dessus des réglages."""
@@ -263,7 +287,6 @@ class PlotCard(QWidget):
 
     @property
     def view_config(self) -> PlotViewConfig:
-        self.settings._read_into_config()
         return self.settings.config
 
     def _current_limits(self):
@@ -326,9 +349,11 @@ class PlotCard(QWidget):
         cfg = self.view_config
         x_lo = cfg.x_min if not cfg.auto_x else self._default_x[0]
         x_hi = cfg.x_max if not cfg.auto_x else self._default_x[1]
-        if self._log_x:
+        current_scale = ax.get_xscale()
+        if cfg.x_scale != current_scale:
+            ax.set_xscale(cfg.x_scale)
+        if cfg.x_scale == "log":
             x_lo, x_hi = sorted((max(x_lo, 1e-3), max(x_hi, 1e-3)))
-            ax.set_xscale("log")
         # Suppress callbacks so programmatic changes don't mark autoscale as manual
         self._suppress_callbacks = True
         try:
@@ -399,17 +424,28 @@ class PlotCard(QWidget):
     def draw(self) -> None:
         self.panel.draw()
 
-    def prepare_replot(self, *, log_x: bool | None = None) -> None:
+    def prepare_replot(self, *, log_x: bool | None = None, clear: bool = True) -> None:
+        current_scale = self.axes.get_xscale()
+        default_scale = "log" if self._log_x else "linear"
+        if current_scale != default_scale:
+            self.settings.config.x_scale = current_scale
+        target_log = self.settings.config.x_scale == "log"
+        if log_x is not None and self.settings.config.x_scale == default_scale:
+            target_log = log_x
         # Clear axes and set labels without triggering the x/y limit callbacks
         self._suppress_callbacks = True
         try:
-            self.panel.clear_axes()
-            if self._xlabel:
-                self.axes.set_xlabel(self._xlabel, labelpad=4)
-            if self._ylabel:
-                self.axes.set_ylabel(self._ylabel, labelpad=6)
-            if log_x if log_x is not None else self._log_x:
-                self.axes.set_xscale("log")
+            if clear:
+                self.panel.clear_axes()
+            else:
+                for artist in list(self.axes.lines):
+                    artist.remove()
+                for artist in list(self.axes.collections):
+                    artist.remove()
+                for artist in list(self.axes.texts):
+                    artist.remove()
+                for artist in list(self.axes.artists):
+                    artist.remove()
         finally:
             self._suppress_callbacks = False
 

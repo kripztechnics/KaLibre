@@ -28,6 +28,7 @@ from kalibre.ui.theme import BG_INPUT, BG_PANEL, BORDER, TEXT, TEXT_DIM
 class PlotViewConfig:
     auto_x: bool = True
     auto_y: bool = True
+    x_scale: str = "linear"
     x_min: float = 20.0
     x_max: float = 20_000.0
     y_min: float = -80.0
@@ -79,6 +80,7 @@ class PlotSettingsBar(QWidget):
         self._x_default = x_default
         self._y_default = y_default
         self.config = PlotViewConfig(
+            x_scale="log" if log_x else "linear",
             x_min=x_default[0],
             x_max=x_default[1],
             y_min=y_default[0],
