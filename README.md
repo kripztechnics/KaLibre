@@ -1,5 +1,11 @@
 # KaLibre
 
+<img width="1917" height="1020" alt="image" src="https://github.com/user-attachments/assets/ac1c449d-ea0b-4227-8a36-05a35ac1043b" />
+
+<img width="1917" height="1015" alt="image" src="https://github.com/user-attachments/assets/c0939f13-37ff-436c-926b-3afc382bcbff" />
+
+<img width="1917" height="1007" alt="image" src="https://github.com/user-attachments/assets/d3e20a7f-7ac0-4fab-ac5e-df3a155e0c9d" />
+
 Salut à toi caleur de sonorisation. 
 
 KaLibre est un petit outil de mesure acoustique et d'analyse audio (Mise en phase de système automatique, universel et fait pour des utilisation de sono DIY).
